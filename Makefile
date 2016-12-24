@@ -23,6 +23,8 @@ CFLAGS += -I./include
 CFLAGS += $(shell pkg-config SDL2_image SDL2_mixer --cflags)
 LDLIBS := $(shell pkg-config SDL2_image SDL2_mixer --libs)
 
+LDLIBS += -lpthread
+
 $(OBJECTS): $(MAKEFILES)
 
 ifndef LIB_MODE

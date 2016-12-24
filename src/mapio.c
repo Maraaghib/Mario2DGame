@@ -167,8 +167,148 @@ void map_save (char *filename)
 /* Fonction de chargement de la carte*/
 void map_load (char *filename)
 {
-	// TODO
-	exit_with_error ("Map load is not yet implemented\n");
+	int fd, r, nb_objects, nb_elements, obj, x, y, solidity, generator, collectible, destructible;
+	unsigned width, height, frames;
+
+	// Ouverture en lecture du fichier contenant la carte
+	fd = open(filename, O_RDONLY);
+	if (fd == -1){
+		catch("Opening error !\n");
+	}
+	// Lecture de la largeur de la carte
+	r = read(fd, &width, sizeof(unsigned));
+	if(r == -1){
+		catch("Reading error !\n");
+	}
+	// Lecture de la largeur de la carte
+	r = read(fd, &height, sizeof(unsigned));
+	if(r == -1){
+		catch("Reading error !\n");
+	}
+	// Lecture du nombre de types d'objets
+	r = read(fd, &nb_objects, sizeof(int));
+	if(r == -1){
+		catch("Reading error !\n");
+	}
+	// Lecture du nombre d'objets non-vides
+	r = read(fd, &nb_elements, sizeof(int));
+	if(r == -1){
+		catch("Reading error !\n");
+	}
+
+	// Allocation d'une  carte  en  mémoire de dimension width * height
+	map_allocate (width, height);
+
+	// Lecture des objets non-vides et leurs coordoonnées respectives
+	for (int i = 0; i < nb_elements; ++i){
+		
+		r = read(fd, &obj, sizeof(int));
+		
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+
+		r = read(fd, &x, sizeof(int));
+		
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+
+		r = read(fd, &y, sizeof(int));
+		
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+		// Placement de chaque objet selon ses coordoonnées
+		map_set(x, y, obj);
+	}
+
+	// Chargement des caractéristiques de chaque objet de la carte
+	map_object_begin(nb_objects);
+
+	for (int i = 0; i < nb_objects; ++i)
+	{
+
+		r = read(fd, &frames, sizeof(unsigned));
+		
+
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+
+		r = read(fd, &solidity, sizeof(int));
+
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+
+		r = read(fd, &generator, sizeof(int));
+
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+
+		r = read(fd, &collectible, sizeof(int));
+
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+
+		r = read(fd, &destructible, sizeof(int));
+
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+
+		int length;
+		r = read(fd, &length, sizeof(unsigned)); // La  longgueur du chemin de l'objet, utile pour la lecture depuis lell fichier
+
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+		
+		char* path = (char*)malloc(length * sizeof(char)); // Allocation en mémoire d'un espace de stockage du chemin du fichier image
+		
+		r = read(fd, path, length);
+
+		if(r == -1){
+			catch("Reading error !\n");
+		}
+		if (r < 1)
+			break;
+
+		path[length] = '\0'; // Marquege de fin de chaîne
+
+		map_object_add(path, frames, solidity | generator | collectible | destructible);
+
+		path = NULL;
+		free(path); // Libération de l'espace alloué
+	}
+
+	map_object_end();
+
+		
+	close(fd);
+
+	printf("Chargement de la carte effectué avec succès !\n");
 }
 
 #endif
