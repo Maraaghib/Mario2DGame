@@ -9,11 +9,6 @@
 
 #ifdef PADAWAN
 
-/*Cette fonction gère les erreurs, d'ouverture, de lecture et d'criture des fichiers*/
-void catch (char* message){
-	perror(message);
-	exit(EXIT_FAILURE);
-}
 
 /*Cette fonction crée une nouvelle carte*/
 void map_new (unsigned width, unsigned height)
@@ -63,22 +58,22 @@ void map_save (char *filename)
 	// Ouverture en écriture du fichier où doit être stockée la carte
 	fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC);
 	if(fd == -1){
-		catch("Opening error !\n");
+		exit_with_error("Opening error !\n");
 	}
 	// Ecriture de la largeur de la carte
 	w = write(fd, &width, sizeof(unsigned));
 	if(w == -1){
-		catch("Writing error !\n");
+		exit_with_error("Writing error !\n");
 	}
 	// Ecriture de la largeur de la carte
 	w = write(fd, &height, sizeof(unsigned));
 	if(w == -1){
-		catch("Writing error !\n");
+		exit_with_error("Writing error !\n");
 	}
 	// Ecriture du nombre de types d'objets
 	w = write(fd, &nb_objects, sizeof(int));
 	if(w == -1){
-		catch("Writing error !\n");
+		exit_with_error("Writing error !\n");
 	}
 	// Comptage des nombres d'objets non-vides (utile pour la lecture afin de faire une boucle uniquement sur les objets non-vides)
 	for (int y = 0; y < height; ++y){
@@ -94,7 +89,7 @@ void map_save (char *filename)
 	// Ecriture de nombre d'éléments non-vides
 	w = write(fd, &nb_elements, sizeof(int)); // Ecriture du nombre d'objets dans la carte
 	if(w == -1){
-		catch("Writing error !\n");
+		exit_with_error("Writing error !\n");
 	}
 	// Ecriture des objets on-vides et leurs coordoonnées respectives
 	for (int y = 0; y < height; ++y){
@@ -106,15 +101,15 @@ void map_save (char *filename)
 				ord = y;
 				w = write(fd, &obj, sizeof(int));
 				if(w == -1){
-					catch("Writing error !\n");
+					exit_with_error("Writing error !\n");
 				}
 				w = write(fd, &abs, sizeof(int));
 				if(w == -1){
-					catch("Writing error !\n");
+					exit_with_error("Writing error !\n");
 				}
 				w = write(fd, &ord, sizeof(int));
 				if(w == -1){
-					catch("Writing error !\n");
+					exit_with_error("Writing error !\n");
 				}
 			}
 			
@@ -131,31 +126,31 @@ void map_save (char *filename)
 
 		w = write(fd, &frames, sizeof(unsigned));
 		if(w == -1){
-			catch("Writing error !\n");
+			exit_with_error("Writing error !\n");
 		}
 			w = write(fd, &solidity, sizeof(int));
 		if(w == -1){
-			catch("Writing error !\n");
+			exit_with_error("Writing error !\n");
 		}
 		w = write(fd, &generator, sizeof(int));
 		if(w == -1){
-			catch("Writing error !\n");
+			exit_with_error("Writing error !\n");
 		}
 		w = write(fd, &collectible, sizeof(int));
 		if(w == -1){
-			catch("Writing error !\n");
+			exit_with_error("Writing error !\n");
 		}
 		w = write(fd, &destructible, sizeof(int));
 		if(w == -1){
-			catch("Writing error !\n");
+			exit_with_error("Writing error !\n");
 		}
 		w = write(fd, &length, sizeof(int)); // Ecriture de la longueur de chaque chemin dans le fichier (facilite la lecture des chaînes de caractères depuis le fichier)
 		if(w == -1){
-			catch("Writing error !\n");
+			exit_with_error("Writing error !\n");
 		}
 		w = write(fd, map_get_name(i), strlen(map_get_name(i)));
 		if(w == -1){
-			catch("Writing error !\n");
+			exit_with_error("Writing error !\n");
 		}
 	}
 	
@@ -173,27 +168,27 @@ void map_load (char *filename)
 	// Ouverture en lecture du fichier contenant la carte
 	fd = open(filename, O_RDONLY);
 	if (fd == -1){
-		catch("Opening error !\n");
+		exit_with_error("Opening error !\n");
 	}
 	// Lecture de la largeur de la carte
 	r = read(fd, &width, sizeof(unsigned));
 	if(r == -1){
-		catch("Reading error !\n");
+		exit_with_error("Reading error !\n");
 	}
 	// Lecture de la largeur de la carte
 	r = read(fd, &height, sizeof(unsigned));
 	if(r == -1){
-		catch("Reading error !\n");
+		exit_with_error("Reading error !\n");
 	}
 	// Lecture du nombre de types d'objets
 	r = read(fd, &nb_objects, sizeof(int));
 	if(r == -1){
-		catch("Reading error !\n");
+		exit_with_error("Reading error !\n");
 	}
 	// Lecture du nombre d'objets non-vides
 	r = read(fd, &nb_elements, sizeof(int));
 	if(r == -1){
-		catch("Reading error !\n");
+		exit_with_error("Reading error !\n");
 	}
 
 	// Allocation d'une  carte  en  mémoire de dimension width * height
@@ -205,7 +200,7 @@ void map_load (char *filename)
 		r = read(fd, &obj, sizeof(int));
 		
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -213,7 +208,7 @@ void map_load (char *filename)
 		r = read(fd, &x, sizeof(int));
 		
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -221,7 +216,7 @@ void map_load (char *filename)
 		r = read(fd, &y, sizeof(int));
 		
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -239,7 +234,7 @@ void map_load (char *filename)
 		
 
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -247,7 +242,7 @@ void map_load (char *filename)
 		r = read(fd, &solidity, sizeof(int));
 
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -255,7 +250,7 @@ void map_load (char *filename)
 		r = read(fd, &generator, sizeof(int));
 
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -263,7 +258,7 @@ void map_load (char *filename)
 		r = read(fd, &collectible, sizeof(int));
 
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -271,7 +266,7 @@ void map_load (char *filename)
 		r = read(fd, &destructible, sizeof(int));
 
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -280,7 +275,7 @@ void map_load (char *filename)
 		r = read(fd, &length, sizeof(unsigned)); // La  longgueur du chemin de l'objet, utile pour la lecture depuis lell fichier
 
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
@@ -290,7 +285,7 @@ void map_load (char *filename)
 		r = read(fd, path, length);
 
 		if(r == -1){
-			catch("Reading error !\n");
+			exit_with_error("Reading error !\n");
 		}
 		if (r < 1)
 			break;
