@@ -1,0 +1,21 @@
+CC = gcc
+CFLAGS = -g -std=c99 -Wall
+CPPFLAGS =  -I../include
+VPATH = ../include
+LDFLAGS = 
+
+#SOURCES := $(wildcard src/*.c)
+SOURCES = maputil.c
+OBJECTS = maputil.o
+
+maputil : $(OBJECTS)
+	$(CC) $^ -o $@
+
+maputil.o: maputil.c ../include/map.h ../include/error.h
+
+.PHONY: clean
+clean :
+	-rm -f $(OBJECTS) maputil
+
+#gcc -std=c99 -Iinclude util/maputil.c -o util/maputil
+
