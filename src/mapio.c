@@ -45,7 +45,7 @@ void map_new (unsigned width, unsigned height)
 /* Fonction de sauvegarde de la carte*/
 void map_save (char *filename)
 {
-	int fd, w, nb_objects, obj, abs, ord, length, nb_elements = 0; // nb_elemnets = nombre d'objets non-vides
+	int fd, w, nb_objects, obj, abs, ord, length, nb_elements = 0; // nb_elements = nombre d'objets non-vides
 	unsigned frames, width, height; // Le nombre de sprites
 	int solidity; // Enumération pour la solidité de l'objet
 	int destructible;
@@ -56,7 +56,7 @@ void map_save (char *filename)
 	nb_objects = map_objects();
 	
 	// Ouverture en écriture du fichier où doit être stockée la carte
-	fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC);
+	fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, 0666);
 	if(fd == -1){
 		exit_with_error("Opening error !\n");
 	}
