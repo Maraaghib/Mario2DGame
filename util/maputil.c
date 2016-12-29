@@ -25,7 +25,7 @@ unsigned getwidth(char* filename){
 	// Lecture de la largeur de la carte
 	r = read(fd, &width, sizeof(unsigned));
 	if(r == -1){
-		exit_with_error("Reading error !\n");
+		exit_with_error("Reading error (%s) !\n", filename);
 	}
 
 	close(fd);
@@ -143,7 +143,7 @@ void setwidth(char* filename, unsigned width){
 	unsigned old_width, height;
 
 	if(width < 16 || width > 1024)
-		exit_with_error("Width 10 out of range [16-1024]\n");
+		exit_with_error("Width out of range [16-1024]\n");
 
 	// Récupération de l'ancienne largeur
 	old_width = getwidth(filename);
@@ -399,7 +399,259 @@ void setwidth(char* filename, unsigned width){
 }
 
 void setheight(char* filename, unsigned height){
+	int fd, fd_tmp, w, r, obj, abs, ord, pos, pos2, cur, cur2, old_nb_elements, nb_objects, nb_elements = 0;
+	unsigned old_height, width;
+
+	if(height < 12 || height > 20)
+		exit_with_error("Height out of range [12-20]\n");
+
+	// Récupération de l'ancienne hauteur
+	old_height = getheight(filename);
+	if(width == old_height) // Sortir de la focntion s'il y a aucune modification de la hauteur
+		return;
+
+	if (fork() == 0){ // Création d'un processus fils chargé de faire la copie
+		execlp("cp", "cp", "-p", filename, "tmp.map", NULL); // Création d'un fichier temporaire, copie de filename
+		_exit(EXIT_FAILURE);
+	}
+	wait(NULL);
+
+	// Ouverture en lecture seule du fichier temporaire
+	fd_tmp = open("tmp.map", O_RDONLY);
+	if(fd_tmp == -1){
+		exit_with_error("Opening error (tmp.map)!\n");
+	}     
+
+	old_nb_elements = getelements(filename); // Nombre d'éléments dans la carte avant modification
+	width = getwidth(filename);  // Largeur de la carte 
+	nb_objects = getobjects(filename); // Nombre de types d'objets de la carte
+
+	// Ouverture en écriture du fichier qui doit contetnir la carte modifée
+	fd = open(filename, O_CREAT | O_RDWR | O_TRUNC, 0666);
+	if(fd == -1){
+		exit_with_error("Opening error (%s)!\n", filename);
+	}
 	
+	// Ecriture de la largeur de la carte
+	w = write(fd, &width, sizeof(unsigned));
+	if(w == -1){
+		exit_with_error("Writing error (%s)!\n", filename);
+	}
+	// Ecriture de la nouvelle hauteur de la carte
+	w = write(fd, &height, sizeof(unsigned));
+	if(w == -1){
+		exit_with_error("Writing error (%s)!\n", filename);
+	}
+	// Ecriture du nombre d'objets de la carte
+	w = write(fd, &nb_objects, sizeof(int));
+	if(w == -1){
+		exit_with_error("Writing error (%s)!\n", filename);
+	}
+	// Réservation d'espace dans le fichieer pour le nombre d'éléments de la carte qui sera écrit plus tard
+	w = write(fd, &nb_elements, sizeof(int));
+	if(w == -1){
+		exit_with_error("Writing error (%s)!\n", filename);
+	}
+
+	cur = sizeof(unsigned) + sizeof(unsigned) + sizeof(int); // Mémoriser la postion où on doit mettre plus tard le nombre d'éléments (nb_elelments)
+	pos = lseek(fd_tmp, cur, SEEK_SET); // Positionne le curseur pour lire le nombre d'elements contenus dans la carte
+	if (pos == -1){
+		exit_with_error("lseek (tmp.map) !\n");
+	}
+	
+	cur2 = cur + sizeof(int); // Déplacer le curseur d'un enregistrement
+	pos2 = lseek(fd_tmp, cur2, SEEK_SET); // Se placer entre nb_elements et obj[i] dans le fichier
+	if (pos2 == -1){
+		exit_with_error("lseek (tmp.map) !\n");
+	}
+
+	for (int i = 0; i < old_nb_elements; ++i){
+		// Lecture du numéro d'objet
+		r = read(fd_tmp, &obj, sizeof(int));
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		// Lecture de l'abscisse de l'objet
+		r = read(fd_tmp, &abs, sizeof(int));
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		// Lecture de l'ordonnée de l'objet
+		r = read(fd_tmp, &ord, sizeof(int));
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+
+		// Cas du rétrécissement: on recopie (sauvegarde) tous les éléménts de la carte compris entre (old_height-height) et height (cf. condition de if)
+		if(height < old_height){
+			if((ord >= (old_height-height))){
+				nb_elements ++; // Incrémenter si un élément a pour ordonnée >= (old_height - height)
+				ord -= (old_height-height); // Décalage des ordonnées de tous les éléments vers le haut (e.g le sol sera à l'ordonnée (old_height-1)-(old_height-height) = height-1)
+				w = write(fd, &obj, sizeof(int));
+				if(w == -1){
+					exit_with_error("Writing error (%s)!\n", filename);
+				}
+				w = write(fd, &abs, sizeof(int));
+				if(w == -1){
+					exit_with_error("Writing error (%s)!\n", filename);
+				}
+				w = write(fd, &ord, sizeof(int));
+				if(w == -1){
+					exit_with_error("Writing error (%s)!\n", filename);
+				}
+			}
+		}
+		// Cas de l'agrandissement: on recopie tous les éléments de la carte, puis augmenter les deux mûrs
+		if(height > old_height){ // Si condition pourra être supprimé ! 
+			nb_elements ++; 
+			ord += (height-old_height); // Décalage des ordonnées de tous les éléments vers le bas (e.g le sol sera à l'ordonnée (old_height-1)+(height-old_height) = height-1)
+			w = write(fd, &obj, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+			w = write(fd, &abs, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+			w = write(fd, &ord, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+		} 
+		
+	}
+
+	obj = 1; //Wall
+
+	// Augmenter les mûrs lors de l'agrandissement de la hauteur
+	if(height > old_height){
+		for (int y = 0; y < height-old_height; ++y){
+			nb_elements += 2; 
+			// Mûr de gauche
+			abs = 0; //Abscisse mûr côté gauche
+			w = write(fd, &obj, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+			w = write(fd, &abs, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+			w = write(fd, &y, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+			// Mûr de droite
+			abs = width-1; //Abscisse mûr côté droite
+			w = write(fd, &obj, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+			w = write(fd, &abs, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+			w = write(fd, &y, sizeof(int));
+			if(w == -1){
+				exit_with_error("Writing error (%s)!\n", filename);
+			}
+		}
+	}
+
+
+	// Recopie des objects et leurs propriétés dans le nouveau fichier
+	for (int i = 0; i < nb_objects; ++i){
+		unsigned frames;
+		int solidity;
+		int generator;
+		int collectible;
+		int destructible;
+		int length;
+
+		r = read(fd_tmp, &frames, sizeof(unsigned));		
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		w = write(fd, &frames, sizeof(unsigned));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+
+		r = read(fd_tmp, &solidity, sizeof(int));
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		w = write(fd, &solidity, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+
+		r = read(fd_tmp, &generator, sizeof(int));
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		w = write(fd, &generator, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+
+		r = read(fd_tmp, &collectible, sizeof(int));
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		w = write(fd, &collectible, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+
+		r = read(fd_tmp, &destructible, sizeof(int));
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		w = write(fd, &destructible, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+
+		r = read(fd_tmp, &length, sizeof(int));
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		w = write(fd, &length, sizeof(int)); // Ecriture de la longueur de chaque chemin dans le fichier (facilite la lecture des chaînes de caractères depuis le fichier)
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+
+		char* path = (char*)malloc(length * sizeof(char)); // Allocation en mémoire d'un espace de stockage du chemin du fichier image
+		r = read(fd_tmp, path, length);	
+		if(r == -1){
+			exit_with_error("Reading error (tmp.map) !\n");
+		}
+		path[length] = '\0'; // Marquege de fin de chaîne
+		w = write(fd, path, strlen(path));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+
+		path = NULL;
+		free(path); // Libération de l'espace alloué
+	}
+
+	// Se positionner dans filename pour mettre à jour le nombre d'éléements qui valait 0 au départ
+	pos = lseek(fd, cur, SEEK_SET);
+	if (pos == -1){
+		exit_with_error("lseek (%s) !\n", filename);
+	}
+	// Modification du nombre d'éléments de la carte
+	w = write(fd, &nb_elements, sizeof(unsigned));
+	if(w == -1){
+		exit_with_error("Writing error (%s)!\n", filename);
+	}
+
+	// fermeture des 2 descripteurs de fichiers et suppression du fichier temporarire
+	close(fd);
+	close(fd_tmp);
+	remove("tmp.map");
 }
 
 
