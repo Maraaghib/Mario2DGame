@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -g -std=c99 -Wall
+CFLAGS = -g -std=c99 -Wall -D_XOPEN_SOURCE=500 # Pour éviter les warning concernant la fonction ftruncate
 CPPFLAGS =  -I../include
 VPATH = ../include
 LDFLAGS = 

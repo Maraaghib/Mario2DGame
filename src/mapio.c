@@ -119,9 +119,9 @@ void map_save (char *filename)
 	for (int i = 0; i < nb_objects; ++i){
 		frames = map_get_frames(i);
 		solidity = map_get_solidity(i);
-		generator = map_is_generator(i);
-		collectible = map_is_collectible(i);
-		destructible = map_is_destructible(i);
+		generator = (map_is_generator(i)) ? MAP_OBJECT_GENERATOR : 0;
+		collectible = (map_is_collectible(i)) ? MAP_OBJECT_COLLECTIBLE : 0;
+		destructible = (map_is_destructible(i)) ? MAP_OBJECT_DESTRUCTIBLE : 0;
 		length = strlen(map_get_name(i));
 
 		w = write(fd, &frames, sizeof(unsigned));
@@ -168,7 +168,7 @@ void map_load (char *filename)
 	// Ouverture en lecture du fichier contenant la carte
 	fd = open(filename, O_RDONLY);
 	if (fd == -1){
-		exit_with_error("Opening error !\n");
+		exit_with_error("Opening error (%s)!\n", filename);
 	}
 	// Lecture de la largeur de la carte
 	r = read(fd, &width, sizeof(unsigned));
