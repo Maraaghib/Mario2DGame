@@ -12,6 +12,29 @@
 #include "map.h"
 #include "error.h"
 
+/* Cette fonction permet de convertir les propriétés en nombre sous format chaîne*/
+char* convertir(char const *chaine){
+	if((strcmp(chaine, "air") == 0) || (strcmp(chaine, "not-destructible") == 0) || (strcmp(chaine, "not-collectible") == 0) || (strcmp(chaine, "not-generator") == 0))
+		return "0"; // MAP_OBJECT_AIR
+
+	if(strcmp(chaine, "semi-solid") == 0) 
+		return "1"; // MAP_OBJECT_SEMI_SOLID
+
+	if(strcmp(chaine, "solid") == 0)
+		return "2"; // MAP_OBJECT_SOLID
+
+	if(strcmp(chaine, "destructible") == 0)
+		return "4"; // MAP_OBJECT_DESTRUCTIBLE
+
+	if(strcmp(chaine, "collectible") == 0)
+		return "8"; // MAP_OBJECT_COLLECTIBLE
+
+	if(strcmp(chaine, "generator") == 0)
+		return "16"; // MAP_OBJECT_GENERATOR
+
+	return NULL;
+}
+
 /* Cette fonction renvoie la largeur de la carte dont le chemin est filename*/
 unsigned getwidth(char* filename){
 	int fd, r;
@@ -114,7 +137,7 @@ int getelements(char* filename){
 
 /* Cette fonction renvoie une chaîne de caractère contenant la date et l'heure
    de la dernière modification de la carte dont le chemin est filename*/
-char* getdate(char* filename){
+char* getchangedate(char* filename){
 	char* date = malloc(30 * sizeof(char));
 	struct stat s; //inscrit la date de deniere modif du fichier 
 
@@ -134,8 +157,8 @@ void getinfo(char* filename){
 	printf("La hauteur de la carte est: %u\n", getheight(filename));
 	printf("Le nombre de types d'objets de la carte est: %d\n", getobjects(filename));
 	printf("Le nombre d'éléments (objets) de la carte est: %d\n", getelements(filename));
-	printf("La date de dernière modification est: %s\n", getdate(filename));
-	free(getdate(filename));
+	printf("La date de dernière modification est: %s\n", getchangedate(filename));
+	free(getchangedate(filename));
 }
 
 void setwidth(char* filename, unsigned width){
@@ -190,7 +213,7 @@ void setwidth(char* filename, unsigned width){
 		exit_with_error("Writing error !\n");
 	}
 
-	cur = sizeof(unsigned) + sizeof(unsigned) + sizeof(int); // Mémoriser la postion où on doit mettre plus tard le nombre d'éléments (nb_elelments)
+	cur = sizeof(unsigned) + sizeof(unsigned) + sizeof(int); // Mémoriser la postion où on doit mettre plus tard le nombre d'éléments (nb_elements)
 	pos = lseek(fd_tmp, cur, SEEK_SET); // Positionne le curseur pour lire le nombre d'elements contenus dans la carte
 	if (pos == -1){
 		exit_with_error("lseek\n");
@@ -395,7 +418,6 @@ void setwidth(char* filename, unsigned width){
 	close(fd);
 	close(fd_tmp);
 	remove("tmp.map");
-
 }
 
 void setheight(char* filename, unsigned height){
@@ -453,7 +475,7 @@ void setheight(char* filename, unsigned height){
 		exit_with_error("Writing error (%s)!\n", filename);
 	}
 
-	cur = sizeof(unsigned) + sizeof(unsigned) + sizeof(int); // Mémoriser la postion où on doit mettre plus tard le nombre d'éléments (nb_elelments)
+	cur = sizeof(unsigned) + sizeof(unsigned) + sizeof(int); // Mémoriser la postion où on doit mettre plus tard le nombre d'éléments (nb_elements)
 	pos = lseek(fd_tmp, cur, SEEK_SET); // Positionne le curseur pour lire le nombre d'elements contenus dans la carte
 	if (pos == -1){
 		exit_with_error("lseek (tmp.map) !\n");
@@ -654,10 +676,82 @@ void setheight(char* filename, unsigned height){
 	remove("tmp.map");
 }
 
+void setobjects(char* filename, int nb_objects, char const *properties[]){
+	
+	int fd, w, pos, cur, nb_elements, solidity, destructible, collectible, generator, length;
+	unsigned frames; 
+
+	// Ouverture en écriture du fichier 
+	fd = open(filename, O_RDWR, 0666);
+	if(fd == -1){
+		exit_with_error("Opening error (%s)!\n", filename);
+	}
+
+	cur = sizeof(unsigned) + sizeof(unsigned); // Déplacer le curseur après les 4 premiers enregistrements
+	pos = lseek(fd, cur, SEEK_SET); // Se positionner de cur octets dans le fichier, juste avants les objets (à réinitialiser)
+	// Ecriture du nombre de types d'objets
+	w = write(fd, &nb_objects, sizeof(int));
+	if(w == -1){
+		exit_with_error("Writing error !\n");
+	}
+
+	nb_elements = getelements(filename); 
+	cur += sizeof(int) + sizeof(int); // Le curseur après nb_ojects et nb_elements
+	cur += nb_elements * (3 * sizeof(int)); // Déplacer le curseur après les numéros des objets et leurs coordonnées
+	pos = lseek(fd, cur, SEEK_SET); // Se positionner de cur octets dans le fichier, juste avants les objets (à réinitialiser)
+	if (pos == -1){
+		exit_with_error("lseek (%s) !\n", filename);
+	}
+
+	
+	int j = 0;
+	for (int i = 0; i < nb_objects; ++i){
+		frames = (unsigned)atoi(properties[1+j]);
+		solidity = atoi(convertir(properties[2+j]));
+		generator = atoi(convertir(properties[5+j]));
+		collectible = atoi(convertir(properties[4+j]));
+		destructible = atoi(convertir(properties[3+j]));
+		length = strlen(properties[0+j]);
+
+		w = write(fd, &frames, sizeof(unsigned));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+
+		w = write(fd, &solidity, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+		w = write(fd, &generator, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+		w = write(fd, &collectible, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+		w = write(fd, &destructible, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+		w = write(fd, &length, sizeof(int));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+		w = write(fd, properties[0+j], strlen(properties[0+j]));
+		if(w == -1){
+			exit_with_error("Writing error (%s)!\n", filename);
+		}
+		j += 6; // 6 = nombre de propriétés pour chaquee objet (path, frames, ...)
+	}
+	ftruncate(fd, lseek(fd, 0, SEEK_CUR)); // Pour raccourcir le fichier
+	
+	close(fd);
+}
 
 int main(int argc, char const *argv[])
 {
-	int nb_arg = argc;
+	int nb_arg = argc, nb_objects, old_nb_objects;
 
 	// Copie caractère par caractère du 2ème argument à la variable filename
 	char* filename = (char*)malloc(strlen(argv[1]) * sizeof(char));
@@ -678,10 +772,11 @@ int main(int argc, char const *argv[])
             {"getheight", no_argument, NULL, 'h'},
             {"getobjects", no_argument, NULL, 'o'},
             {"getelements", no_argument, NULL, 'e'},
-            {"getdate", no_argument, NULL, 'd'},
+            {"getchangedate", no_argument, NULL, 'd'},
             {"getinfo", no_argument, NULL, 'i'},
             {"setwidth", required_argument, NULL, 'W'},
             {"setheight", required_argument, NULL, 'H'},
+            {"setobjects", required_argument, NULL, 'O'},
             {NULL, 0, NULL, 0}
         };
         // getopt_long permet d'analyser les options (longues) de la ligne de commande
@@ -724,8 +819,8 @@ int main(int argc, char const *argv[])
 				if(nb_arg != 3){
 					exit_with_error("Three parameters !\nUsage: ./maputil <file> --option\n");
 				}
-            	printf("La date de dernière modification est: %s\n", getdate(filename));
-				free(getdate(filename));
+            	printf("La date de dernière modification est: %s\n", getchangedate(filename));
+				free(getchangedate(filename));
                 if (optarg)
                     exit(EXIT_FAILURE);
                 break;
@@ -744,7 +839,7 @@ int main(int argc, char const *argv[])
                 
                 if (optarg){ // S'il y a un paramètre de l'option getwidth indexée par 'w'
                 	setwidth(filename, (unsigned)atoi(optarg));	
-	                printf("La largeur de la carte est: %u\n", getwidth(filename));
+	                printf("La largeur de la carte est changée et est devenue %u\n", getwidth(filename));
 	            }
                 
                 break;
@@ -755,7 +850,21 @@ int main(int argc, char const *argv[])
                 
                 if (optarg){
                 	setheight(filename, (unsigned)atoi(optarg));	
-                	printf("La hauteur de la carte est: %u\n", getheight(filename));
+                	printf("La hauteur de la carte est changée et est devenue %u\n", getheight(filename));
+                }
+                
+                break;
+            case 'O':
+            	old_nb_objects = getobjects(filename); // Le nombre d'objet avant réinitialisation
+            	nb_arg -= 3; // Le nombre d'arguments de l'option --setobjects (3 = ./maputil + filename + --setobjects)
+            	nb_objects = nb_arg / 6; // 6 = le nombre de propriétés de chaue objet (path, frames, ...)
+				if((nb_objects) < old_nb_objects){ // Si la nouvelle liste contient moins d'objets qu'à l'origine (6 = path + frames + ...)
+					exit_with_error("The list must contain %d or more objects !\nUsage: %s <filename> --setobjects { <path> <frames> <solidity> <destructible> <collectible> <generator> }\n", old_nb_objects, argv[0]);
+				}
+                
+                if (optarg){
+                	setobjects(filename, nb_objects, argv+3);	
+                	printf("Les objets de la carte sont réinitialisés avec succès !\n");
                 }
                 
                 break;
