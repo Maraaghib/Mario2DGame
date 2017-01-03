@@ -182,8 +182,8 @@ void setwidth(char* filename, unsigned width){
 	int fd, fd_tmp, w, r, obj, abs, ord, pos, pos2, cur, cur2, old_nb_elements, nb_objects, nb_elements = 0;
 	unsigned old_width, height;
 
-	if(width < 16 || width > 1024)
-		exit_with_error("Width out of range [16-1024]\n");
+	if(width < MIN_WIDTH || width > MAX_WIDTH)
+		exit_with_error("Width out of range [%d-%d]\n", MIN_WIDTH, MAX_WIDTH);
 
 	// Récupération de l'ancienne largeur
 	old_width = getwidth(filename);
@@ -442,8 +442,8 @@ void setheight(char* filename, unsigned height){
 	int fd, fd_tmp, w, r, obj, abs, ord, pos, pos2, cur, cur2, old_nb_elements, nb_objects, nb_elements = 0;
 	unsigned old_height, width;
 
-	if(height < 12 || height > 20)
-		exit_with_error("Height out of range [12-20]\n");
+	if(height < MIN_HEIGHT || height > MAX_HEIGHT)
+		exit_with_error("Height out of range [%d-%d]\n", MIN_HEIGHT, MAX_HEIGHT);
 
 	// Récupération de l'ancienne hauteur
 	old_height = getheight(filename);
